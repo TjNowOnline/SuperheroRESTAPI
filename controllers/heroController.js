@@ -16,7 +16,7 @@ exports.getHeroById = async (req, res, next) => {
         if (!hero) {
             return res.status(404).json({
                 error: {
-                    message: 'Hero with id ${id} not found.'
+                    message: `Hero with id ${id} not found.`
                 }
             });
         }
@@ -29,9 +29,20 @@ exports.getHeroById = async (req, res, next) => {
 exports.addFavorite = (req, res, next) => {
     try {
         const { id, note } = req.body;
-        // model will handle duplicates if you want
+
+        // valider at note findes (alternativt brug Joi middleware)
+        if (!note) {
+            return res.status(400).json({ error: 'Note mangler' });
+        }
+
         const fav = heroModel.addFavorite({ id, note });
-        res.status(201).json(fav);
+
+        // returnér både message og favoritobjekt
+        return res.status(201).json({
+            message: 'Favorit tilføjet!',
+            favorite: fav
+        });
+
     } catch (err) {
         next(err);
     }

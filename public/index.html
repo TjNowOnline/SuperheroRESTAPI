@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <title>Superhero REST API</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #1a1a1a;
+            color: #f0f0f0;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #ffd700;
+            text-shadow: 0 0 10px #ffcc00;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .card {
+            background: #2a2a2a;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+            width: 200px;
+            padding: 10px;
+        }
+        .card img {
+            width: 100%;
+            border-radius: 10px;
+        }
+        button {
+            background: #ffcc00;
+            border: none;
+            padding: 8px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+        button:hover {
+            background: #ffd633;
+        }
+        input {
+            width: 90%;
+            padding: 5px;
+            border-radius: 5px;
+            border: none;
+            margin-top: 5px;
+        }
+        #showMoreBtn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+<h1>Superhero REST API</h1>
+
+<h2>Alle Superhelte</h2>
+<div id="heroes" class="container"></div>
+<button id="showMoreBtn" onclick="showMore()">Vis flere helte</button>
+
+<h2>Favoritter</h2>
+<div id="favorites" class="container"></div>
+
+<script>
+    const baseUrl = 'http://localhost:3000';
+    let heroes = [];
+    let visibleCount = 21;
+
+    // Hent alle superhelte
+    async function loadHeroes() {
+        const res = await fetch(`${baseUrl}/superheroes`);
+        heroes = await res.json();
+        renderHeroes();
+    }
+
+    // Render helte op til visibleCount
+    function renderHeroes() {
+        const heroContainer = document.getElementById('heroes');
+        heroContainer.innerHTML = '';
+        heroes.slice(0, visibleCount).forEach(hero => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+          <img src="${hero.image}" alt="${hero.name}">
+          <h3>${hero.name}</h3>
+          <p><strong>Navn:</strong> ${hero.fullName || 'Ukendt'}</p>
+          <p><strong>Styrke:</strong> ${hero.strength ?? 'Ukendt'}</p>
+          <input type="text" id="note-${hero.id}" placeholder="Skriv note...">
+          <button onclick="addFavorite(${hero.id})">Tilføj favorit</button>
+        `;
+            heroContainer.appendChild(card);
+        });
+    }
+
+    function showMore() {
+        visibleCount += 21;
+        renderHeroes();
+    }
+
+    // Tilføj favorit
+    async function addFavorite(id) {
+        const note = document.getElementById(`note-${id}`).value;
+        if (!note) {
+            alert('Du skal skrive en note først!');
+            return;
+        }
+
+        const res = await fetch(`${baseUrl}/favorites`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, note })
+        });
+
+        if (res.ok) {
+            alert('Favorit tilføjet!');
+            loadFavorites();
+        } else {
+            const err = await res.json();
+            alert(`Fejl: ${err.error || 'Kunne ikke tilføje favorit'}`);
+        }
+    }
+
+    // Hent favoritter
+    async function loadFavorites() {
+        const res = await fetch(`${baseUrl}/favorites`);
+        const favs = await res.json();
+
+        const favContainer = document.getElementById('favorites');
+        favContainer.innerHTML = '';
+
+        if (favs.length === 0) {
+            favContainer.textContent = 'Ingen favoritter endnu';
+            return;
+        }
+
+        favs.forEach(fav => {
+            // slå helt op ud fra ID
+            const hero = heroes.find(h => h.id === fav.id);
+
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+          ${hero ? `<img src="${hero.image}" alt="${hero.name}">` : ''}
+          <h3>${hero ? hero.name : 'Ukendt helt'} (ID: ${fav.id})</h3>
+          <p>${fav.note}</p>
+          <button onclick="deleteFavorite(${fav.id})">Slet</button>
+        `;
+            favContainer.appendChild(card);
+        });
+    }
+
+    // Slet favorit
+    async function deleteFavorite(id) {
+        const res = await fetch(`${baseUrl}/favorites/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            alert('Favorit slettet!');
+            loadFavorites();
+        } else {
+            alert('Fejl: Kunne ikke slette favorit');
+        }
+    }
+
+    // Kør ved start
+    loadHeroes().then(loadFavorites);
+</script>
+</body>
+</html>
